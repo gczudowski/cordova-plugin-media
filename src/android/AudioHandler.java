@@ -42,6 +42,8 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 
+import java.io.IOError;
+
 /**
  * This class called by CordovaActivity to play and record audio.
  * The file can be local or over a network using http.
@@ -102,6 +104,8 @@ public class AudioHandler extends CordovaPlugin {
      * @return 				A PluginResult object with a status and message.
      */
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+        System.out.println("#debug Audio Handler execute -> " + action);
+
         CordovaResourceApi resourceApi = webView.getResourceApi();
         PluginResult.Status status = PluginResult.Status.OK;
         String result = "";
@@ -127,6 +131,28 @@ public class AudioHandler extends CordovaPlugin {
             this.resumeRecordingAudio(args.getString(0));
         }
         else if (action.equals("startPlayingAudio")) {
+        System.out.println("#debug AudioHandler action create");
+            JSONObject options = args.optJSONObject(2);
+
+            System.out.println("#debug Audio Handler options -> " + options.toString());
+
+            Boolean isLooping = false;
+
+            try {
+                if (options == null) {
+                    System.out.println("#debug Audio Handler execute is options null");
+                } else if (options.isNull("isLooping")) {
+                    System.out.println("#debug Audio Handler execute is options no looping param");
+                } else {
+                    isLooping = options.getBoolean("isLooping");
+                    System.out.println("#debug Audio Handler execute is options changed -> " + isLooping);
+                }
+            } catch(JSONException e) {
+                System.out.println("#debug Audio Handler options.getBoolean error");
+            }
+
+            System.out.println("#debug isLooping ->" + isLooping);
+
             String target = args.getString(1);
             String fileUriStr;
             try {
@@ -135,7 +161,7 @@ public class AudioHandler extends CordovaPlugin {
             } catch (IllegalArgumentException e) {
                 fileUriStr = target;
             }
-            this.startPlayingAudio(args.getString(0), FileHelper.stripFileProtocol(fileUriStr));
+            this.startPlayingAudio(args.getString(0), FileHelper.stripFileProtocol(fileUriStr), isLooping);
         }
         else if (action.equals("seekToAudio")) {
             this.seekToAudio(args.getString(0), args.getInt(1));
@@ -162,11 +188,35 @@ public class AudioHandler extends CordovaPlugin {
             return true;
         }
         else if (action.equals("create")) {
+            System.out.println("#debug AudioHandler action create");
+
+            JSONObject options = args.optJSONObject(2);
+
+            System.out.println("#debug Audio Handler options -> " + options.toString());
+
+            Boolean isLooping = false;
+
+            try {
+                if (options == null) {
+                    System.out.println("#debug Audio Handler execute is options null");
+                } else if (options.isNull("isLooping")) {
+                    System.out.println("#debug Audio Handler execute is options no looping param");
+                } else {
+                    isLooping = options.getBoolean("isLooping");
+                    System.out.println("#debug Audio Handler execute is options changed -> " + isLooping);
+                }
+            } catch(JSONException e) {
+                System.out.println("#debug Audio Handler options.getBoolean error");
+            }
+
+            System.out.println("#debug isLooping ->" + isLooping);
+
             String id = args.getString(0);
             String src = FileHelper.stripFileProtocol(args.getString(1));
-            getOrCreatePlayer(id, src);
+            getOrCreatePlayer(id, src, isLooping);
         }
         else if (action.equals("release")) {
+            System.out.println("#debug AudioHaldner action release");
             boolean b = this.release(args.getString(0));
             callbackContext.sendPluginResult(new PluginResult(status, b));
             return true;
@@ -249,13 +299,15 @@ public class AudioHandler extends CordovaPlugin {
     // LOCAL METHODS
     //--------------------------------------------------------------------------
 
-    private AudioPlayer getOrCreatePlayer(String id, String file) {
+    private AudioPlayer getOrCreatePlayer(String id, String file, Boolean isLooping) {
+        System.out.println("#debug getOrCreatePlayer isLooping -> " + isLooping);
+
         AudioPlayer ret = players.get(id);
         if (ret == null) {
             if (players.isEmpty()) {
                 onFirstPlayerCreated();
             }
-            ret = new AudioPlayer(this, id, file);
+            ret = new AudioPlayer(this, id, file, isLooping);
             players.put(id, ret);
         }
         return ret;
@@ -266,13 +318,17 @@ public class AudioHandler extends CordovaPlugin {
      * @param id				The id of the audio player
      */
     private boolean release(String id) {
+        System.out.println("#debug AudioHandler release start");
         AudioPlayer audio = players.remove(id);
         if (audio == null) {
+            System.out.println("#debug AudioHandler release audio null");
             return false;
         }
         if (players.isEmpty()) {
+            System.out.println("#debug AudioHandler release players empty");
             onLastPlayerReleased();
         }
+        System.out.println("#debug AudioHandler release before audio destroy");
         audio.destroy();
         return true;
     }
@@ -283,7 +339,7 @@ public class AudioHandler extends CordovaPlugin {
      * @param file				The name of the file
      */
     public void startRecordingAudio(String id, String file) {
-        AudioPlayer audio = getOrCreatePlayer(id, file);
+        AudioPlayer audio = getOrCreatePlayer(id, file, false);
         audio.startRecording(file);
     }
 
@@ -315,8 +371,8 @@ public class AudioHandler extends CordovaPlugin {
      * @param id				The id of the audio player
      * @param file				The name of the audio file.
      */
-    public void startPlayingAudio(String id, String file) {
-        AudioPlayer audio = getOrCreatePlayer(id, file);
+    public void startPlayingAudio(String id, String file, Boolean isLooping) {
+        AudioPlayer audio = getOrCreatePlayer(id, file, isLooping);
         audio.startPlaying(file);
         getAudioFocus();
     }
@@ -375,7 +431,7 @@ public class AudioHandler extends CordovaPlugin {
      * @return					The duration in msec.
      */
     public float getDurationAudio(String id, String file) {
-        AudioPlayer audio = getOrCreatePlayer(id, file);
+        AudioPlayer audio = getOrCreatePlayer(id, file, false);
         return audio.getDuration(file);
     }
 

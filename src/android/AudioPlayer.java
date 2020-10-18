@@ -36,8 +36,14 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.util.LinkedList;
+
+import android.media.SoundPool;
+import android.media.SoundPool.OnLoadCompleteListener;
+import android.media.SoundPool.Builder;
+import android.widget.Toast;
 
 /**
  * This class implements the audio playback and recording capabilities used by Cordova.
@@ -49,6 +55,15 @@ import java.util.LinkedList;
  *      sdcard:             file name is just sound.mp3
  */
 public class AudioPlayer implements OnCompletionListener, OnPreparedListener, OnErrorListener {
+
+
+    private SoundPool soundPool;
+
+    private int soundID;
+
+    float actVolume, maxVolume, volume;
+
+    AudioManager audioManager;
 
     // AudioPlayer modes
     public enum MODE { NONE, PLAY, RECORD };
@@ -83,6 +98,7 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
     private STATE state = STATE.MEDIA_NONE; // State of recording or playback
 
     private String audioFile = null;        // File name to play or record to
+    private Boolean isLooping = false;
     private float duration = -1;            // Duration of audio
 
     private MediaRecorder recorder = null;  // Audio recording object
@@ -99,11 +115,14 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * @param handler           The audio handler object
      * @param id                The id of this audio player
      */
-    public AudioPlayer(AudioHandler handler, String id, String file) {
+    public AudioPlayer(AudioHandler handler, String id, String file, Boolean isLooping) {
         this.handler = handler;
         this.id = id;
         this.audioFile = file;
         this.tempFiles = new LinkedList<String>();
+        this.isLooping = isLooping;
+
+        System.out.println("#debug new AudioPlayer isLooping -> " + isLooping);
     }
 
     private String generateTempFile() {
@@ -120,22 +139,33 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * Destroy player and stop audio playing or recording.
      */
     public void destroy() {
-        // Stop any play or record
-        if (this.player != null) {
-            if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
-                this.player.stop();
-                this.setState(STATE.MEDIA_STOPPED);
+        System.out.println("#debug AudioPlayer destroy");
+        if (this.isLooping == true) {
+            System.out.println("#debug destroy isLooing true");
+            this.soundPool.stop(this.soundID);
+            this.soundPool.release();
+            this.soundPool = null;
+        } else {
+            System.out.println("#debug destroy isLooing false");
+            // Stop any play or record
+            if (this.player != null) {
+                if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
+                    this.player.stop();
+                    this.setState(STATE.MEDIA_STOPPED);
+                }
+                this.player.release();
+                this.player = null;
             }
-            this.player.release();
-            this.player = null;
-        }
-        if (this.recorder != null) {
-            if (this.state != STATE.MEDIA_STOPPED) {
-                this.stopRecording(true);
+            if (this.recorder != null) {
+                if (this.state != STATE.MEDIA_STOPPED) {
+                    this.stopRecording(true);
+                }
+                this.recorder.release();
+                this.recorder = null;
             }
-            this.recorder.release();
-            this.recorder = null;
         }
+
+
     }
 
     /**
@@ -337,12 +367,41 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * @param file              The name of the audio file.
      */
     public void startPlaying(String file) {
-        if (this.readyPlayer(file) && this.player != null) {
-            this.player.start();
-            this.setState(STATE.MEDIA_RUNNING);
-            this.seekOnPrepared = 0; //insures this is always reset
+            //audioManager = (AudioManager) this.handler.cordova.getActivity().getSystemService("AUDIO_SERVICE");
+            //actVolume = (float) audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+            //maxVolume = (float) audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+            //volume = actVolume / maxVolume;
+
+        if (this.isLooping) {
+            System.out.println("#debug startPlaying Use SoundPool looping");
+            try {
+                String f = file.substring(15);
+                android.content.res.AssetFileDescriptor fd = this.handler.cordova.getActivity().getAssets().openFd(f);
+
+                this.soundPool = new SoundPool.Builder()
+                    .setMaxStreams(1)
+                    .build();
+                this.soundPool.load(fd, 1);
+
+
+                this.soundPool.setOnLoadCompleteListener(new OnLoadCompleteListener() {
+                    public void onLoadComplete(SoundPool soundPool, int sampleId, int status) {
+                        AudioPlayer.this.soundID = sampleId;
+                        soundPool.play(sampleId, 1f, 1f, 1, -1, 1f);
+                    }
+                });
+            } catch (IOException exception) {
+
+            }
         } else {
-            this.prepareOnly = false;
+            System.out.println("#debug startPlaying Use MediaPlayer not looping");
+            if (this.readyPlayer(file) && this.player != null) {
+                this.player.start();
+                this.setState(STATE.MEDIA_RUNNING);
+                this.seekOnPrepared = 0; //insures this is always reset
+            } else {
+                this.prepareOnly = false;
+            }
         }
     }
 
@@ -382,15 +441,21 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * Stop playing the audio file.
      */
     public void stopPlaying() {
-        if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
-            this.player.pause();
-            this.player.seekTo(0);
-            LOG.d(LOG_TAG, "stopPlaying is calling stopped");
-            this.setState(STATE.MEDIA_STOPPED);
-        }
-        else {
-            LOG.d(LOG_TAG, "AudioPlayer Error: stopPlaying() called during invalid state: " + this.state.ordinal());
-            sendErrorStatus(MEDIA_ERR_NONE_ACTIVE);
+        if (this.isLooping == true) {
+            System.out.println("#debug Use SoundPool not looping");
+            this.soundPool.stop(this.soundID);
+        } else {
+            System.out.println("#debug Use MediaPlayer not looping");
+            if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
+                this.player.pause();
+                this.player.seekTo(0);
+                LOG.d(LOG_TAG, "stopPlaying is calling stopped");
+                this.setState(STATE.MEDIA_STOPPED);
+            }
+            else {
+                LOG.d(LOG_TAG, "AudioPlayer Error: stopPlaying() called during invalid state: " + this.state.ordinal());
+                sendErrorStatus(MEDIA_ERR_NONE_ACTIVE);
+            }
         }
     }
 
