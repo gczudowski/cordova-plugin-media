@@ -388,6 +388,7 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
                     public void onLoadComplete(SoundPool soundPool, int sampleId, int status) {
                         AudioPlayer.this.soundID = sampleId;
                         soundPool.play(sampleId, 1f, 1f, 1, -1, 1f);
+                        System.out.println("#debug AudioPlayer SoundPool startPlaying id " + sampleId);
                     }
                 });
             } catch (IOException exception) {
@@ -636,7 +637,16 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * @param volume
      */
     public void setVolume(float volume) {
-        if (this.player != null) {
+        System.out.println("#debug #setVolume AudioPlayer setVolume volume " + volume);
+        System.out.println("#debug #setVolume AudioPlayer setVolume this.isLooping " + this.isLooping);
+
+        if (this.isLooping) {
+            System.out.println("#debug #setVolume AudioPlayer setVolume SoundPool id " + this.soundID);
+
+            this.soundPool.setVolume(this.soundID, volume, volume);
+        } else if (this.player != null) {
+            System.out.println("#debug #setVolume AudioPlayer setVolume MediaPlayer");
+
             this.player.setVolume(volume, volume);
         } else {
             LOG.d(LOG_TAG, "AudioPlayer Error: Cannot set volume until the audio file is initialized.");
