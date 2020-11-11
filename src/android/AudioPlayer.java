@@ -428,7 +428,9 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
     public void pausePlaying() {
 
         // If playing, then pause
-        if (this.state == STATE.MEDIA_RUNNING && this.player != null) {
+        if (this.isLooping) {
+            this.stopPlaying();
+        } else if (this.state == STATE.MEDIA_RUNNING && this.player != null) {
             this.player.pause();
             this.setState(STATE.MEDIA_PAUSED);
         }
@@ -464,7 +466,7 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      * Resume playing.
      */
     public void resumePlaying() {
-    	this.startPlaying(this.audioFile);
+        this.startPlaying(this.audioFile);
     }
 
     /**
