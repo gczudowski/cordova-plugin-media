@@ -486,6 +486,7 @@ public class AudioHandler extends CordovaPlugin {
                 case (AudioManager.AUDIOFOCUS_LOSS) :
                     System.out.println("#debug focusChangeListener LOSE");
                     pauseAllLostFocus();
+                    startAudioFocusCountdownTimer();
                     break;
                 case (AudioManager.AUDIOFOCUS_GAIN):
                 case (AudioManager.AUDIOFOCUS_GAIN_TRANSIENT):
@@ -499,6 +500,25 @@ public class AudioHandler extends CordovaPlugin {
                 }
             }
         };
+
+    private void startAudioFocusCountdownTimer() {
+         new CountDownTimer(2000, 2000) {
+            public void onTick(long millisUntilFinished) {
+                // do nothing
+            }
+            public void onFinish() {
+                AudioManager am = (AudioManager) this.cordova.getActivity().getSystemService(Context.AUDIO_SERVICE);
+                int result = am.requestAudioFocus(focusChangeListener,
+                                          AudioManager.STREAM_MUSIC,
+                                          AudioManager.AUDIOFOCUS_GAIN);
+
+                System.out.println("#debug startAudioFocusCountdownTimer request audio focus " + result);
+
+                if (!result)
+                    startAudioFocusCountdownTimer();
+            }
+        }.start();
+    }
 
     public void getAudioFocus() {
         String TAG2 = "AudioHandler.getAudioFocus(): Error : ";
