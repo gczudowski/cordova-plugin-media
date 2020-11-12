@@ -633,6 +633,10 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
         return this.state.ordinal();
     }
 
+    public boolean isLooping() {
+        return this.isLooping;
+    }
+
     /**
      * Set the volume for audio player
      *

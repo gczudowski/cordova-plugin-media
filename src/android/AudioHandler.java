@@ -458,7 +458,10 @@ public class AudioHandler extends CordovaPlugin {
 
     public void pauseAllLostFocus() {
         for (AudioPlayer audio : this.players.values()) {
-            if (audio.getState() == AudioPlayer.STATE.MEDIA_RUNNING.ordinal()) {
+            if (audio.isLooping()) {
+                this.pausedForFocus.add(audio);
+                audio.pausePlaying();
+            } else if (audio.getState() == AudioPlayer.STATE.MEDIA_RUNNING.ordinal()) {
                 this.pausedForFocus.add(audio);
                 audio.pausePlaying();
             }
