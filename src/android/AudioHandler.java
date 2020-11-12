@@ -488,6 +488,8 @@ public class AudioHandler extends CordovaPlugin {
                     pauseAllLostFocus();
                     break;
                 case (AudioManager.AUDIOFOCUS_GAIN):
+                case (AudioManager.AUDIOFOCUS_GAIN_TRANSIENT):
+                case (AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK):
                     System.out.println("#debug focusChangeListener GAIN");
                     resumeAllGainedFocus();
                     break;
