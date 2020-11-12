@@ -492,6 +492,7 @@ public class AudioHandler extends CordovaPlugin {
                     resumeAllGainedFocus();
                     break;
                 default:
+                    System.out.println("#debug focusChangeListener WTF " + focusChange);
                     break;
                 }
             }
