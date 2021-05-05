@@ -127,11 +127,15 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
 
     private String generateTempFile() {
       String tempFileName = null;
+      // deprecated because of android 11 read_external_storage permission change
       //if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
       //    tempFileName = Environment.getExternalStorageDirectory().getAbsolutePath() + "/tmprecording-" + System.currentTimeMillis() + ".3gp";
       //} else {
-          tempFileName = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/tmprecording-" + System.currentTimeMillis() + ".3gp";
+      //    tempFileName = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/tmprecording-" + System.currentTimeMillis() + ".3gp";
       //}
+
+      tempFileName = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/tmprecording-" + System.currentTimeMillis() + ".3gp";
+
       return tempFileName;
     }
 
